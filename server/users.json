@@ -1,0 +1,44 @@
+[
+    {
+        "id": 1,
+        "username": "cher",
+        "password": "password",
+        "profile": {
+            "vibe": "Iconic",
+            "openness": "Avant-Garde",
+            "body": "Petite",
+            "base": [
+                "Quiet Luxury",
+                "Vintage Revival"
+            ]
+        }
+    },
+    {
+        "id": 2,
+        "username": "dionne",
+        "password": "password",
+        "profile": {
+            "vibe": "Regal",
+            "openness": "Traditional",
+            "body": "Hourglass",
+            "base": [
+                "Maximalist",
+                "Preppy"
+            ]
+        }
+    },
+    {
+        "id": 3,
+        "username": "tai",
+        "password": "password",
+        "profile": {
+            "vibe": "Approachable",
+            "openness": "Contemporary",
+            "body": "Athletic",
+            "base": [
+                "Grunge",
+                "Casual"
+            ]
+        }
+    }
+]
