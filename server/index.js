@@ -8,6 +8,7 @@ require('dotenv').config();
 const app = express();
 const PORT = 3001;
 const SECRET_KEY = process.env.JWT_SECRET || 'vogue-ai-secret-key-2026';
+const API_URL = 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io';
 
 app.use(cors());
 app.use(express.json());
@@ -33,7 +34,7 @@ const getUsers = () => {
 const fetchExternalToken = async () => {
     try {
         console.log('Fetching external service token...');
-        const externalRes = await fetch('https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io/auth/login', {
+        const externalRes = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

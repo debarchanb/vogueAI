@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
+const API_URL = 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io';
+
 export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishlist, onReset }) {
     const { logout, userProfile, threadId, setThreadId } = useUser();
     const navigate = useNavigate();
@@ -127,7 +129,8 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
                     params.append('query', combinedQuery);
                     params.append('filters', '');
 
-                    const finalUrl = `/fashion/fashionrec/recommend/text?${params.toString()}`;
+
+                    const finalUrl = `${API_URL}/fashionrec/recommend/text?${params.toString()}`;
 
                     console.log('Fetching:', finalUrl);
 
@@ -207,7 +210,7 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
                     const formData = new FormData();
                     formData.append('file', uploadedFile);
                     const limit = page * 6;
-                    const url = `/fashion/recommend/image?k=${limit}`;
+                    const url = `${API_URL}/recommend/image?k=${limit}`;
 
                     const response = await fetch(url, {
                         method: 'POST',
