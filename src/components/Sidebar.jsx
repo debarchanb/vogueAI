@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sliders, RefreshCw, Upload, Camera } from 'lucide-react';
 
-export default function Sidebar({ filters, setFilters, onReset }) {
+export default function Sidebar({ filters, setFilters, onReset, onImageUpload }) {
     const handleChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
@@ -67,7 +67,21 @@ export default function Sidebar({ filters, setFilters, onReset }) {
                         <Camera size={16} />
                         <h3>Vision Synthesis</h3>
                     </div>
-                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-black transition-colors cursor-pointer group">
+                    <div
+                        className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-black transition-colors cursor-pointer group"
+                        onClick={() => document.getElementById('vision-upload').click()}
+                    >
+                        <input
+                            type="file"
+                            id="vision-upload"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                    onImageUpload(e.target.files[0]);
+                                }
+                            }}
+                        />
                         <Upload className="mx-auto text-gray-300 group-hover:text-black mb-2 transition-colors" size={24} />
                         <p className="text-xs text-gray-400">Upload inspiration...</p>
                     </div>

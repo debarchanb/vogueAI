@@ -12,7 +12,10 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
     const [activeTab, setActiveTab] = useState('personal');
     const [menuOpen, setMenuOpen] = useState(false);
     const [showWardrobe, setShowWardrobe] = useState(false);
+
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchMode, setSearchMode] = useState('text'); // 'text' | 'image'
+    const [uploadedFile, setUploadedFile] = useState(null);
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({
         mood: 'Mellow',
@@ -23,9 +26,10 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
 
     const [recs, setRecs] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Curating your feed...');
     const [hasMore, setHasMore] = useState(true);
 
-    const API_URL = 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io/fashion/recommend/text';
+    const API_URL = '/fashion/recommend/text';
 
     // Reset pagination when search changes
     useEffect(() => {
@@ -34,115 +38,186 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
         setHasMore(true);
     }, [searchQuery]);
 
+    const handleImageUpload = (file) => {
+        setUploadedFile(file);
+        setSearchMode('image');
+        setPage(1);
+        setRecs([]);
+        setHasMore(true);
+        // Loading state will be handled by useEffect
+    };
+
     useEffect(() => {
         const fetchRecs = async () => {
-            // Only fetch if explicit search query is present
-            if (!searchQuery) {
-                // Fallback Mock Data if no search
-                if (page === 1) {
-                    setRecs([
-                        {
-                            name: "Silk-Blend Overcoat",
-                            price: "₹12,500",
-                            match: "98%",
-                            img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=400",
-                            reason: `Matches your '${userProfile.climate || 'local'}' climate and ${filters.palette} palette.`
-                        },
-                        {
-                            name: "Architectural Knit",
-                            price: "₹4,200",
-                            match: "94%",
-                            img: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=400",
-                            reason: `Aligned with your ${filters.fabricWeight} weight preference for ${filters.mood} states.`
-                        },
-                        {
-                            name: "Monolith Derby Shoes",
-                            price: "₹8,900",
-                            match: "89%",
-                            img: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?q=80&w=400",
-                            reason: `Reinforces your ${userProfile.base?.[0] || 'Selected'} aesthetic core.`
-                        }
-                    ]);
-                }
-                setIsLoading(false);
-                return;
-            }
-
-            setIsLoading(true);
-            try {
-                // Incremental K strategy
-                const limit = page * 6;
-                const url = `${API_URL}?query=${encodeURIComponent(searchQuery)}&k=${limit}`;
-                console.log('Fetching:', url);
-
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('API Error');
-
-                const data = await response.json();
-                const items = Array.isArray(data) ? data : (data.results || []);
-
-                const mappedItems = items.map(item => {
-                    let displayName = null;
-
-                    // STRATEGY 1: Extract from path (e.g. ".../Mosaic_Print_Pocket_Tee/img_0033.jpg")
-                    // The folder name 'Mosaic_Print_Pocket_Tee' is usually the best product name.
-                    if (item.image_path) {
-                        try {
-                            const parts = item.image_path.split('/');
-                            if (parts.length >= 2) {
-                                // Get the folder name (second to last item)
-                                const folderName = parts[parts.length - 2];
-                                // Check if it looks like a name (has underscores, not just "img")
-                                if (folderName && folderName.includes('_')) {
-                                    displayName = folderName.replace(/_/g, ' ');
-                                }
+            // Case 1: Text Search (Default)
+            if (searchMode === 'text') {
+                // Only fetch if explicit search query is present
+                if (!searchQuery) {
+                    // Fallback Mock Data if no search
+                    if (page === 1) {
+                        setRecs([
+                            {
+                                name: "Silk-Blend Overcoat",
+                                price: "₹12,500",
+                                match: "98%",
+                                img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=400",
+                                reason: `Matches your '${userProfile.climate || 'local'}' climate and ${filters.palette} palette.`
+                            },
+                            {
+                                name: "Architectural Knit",
+                                price: "₹4,200",
+                                match: "94%",
+                                img: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=400",
+                                reason: `Aligned with your ${filters.fabricWeight} weight preference for ${filters.mood} states.`
+                            },
+                            {
+                                name: "Monolith Derby Shoes",
+                                price: "₹8,900",
+                                match: "89%",
+                                img: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?q=80&w=400",
+                                reason: `Reinforces your ${userProfile.base?.[0] || 'Selected'} aesthetic core.`
                             }
-                        } catch (e) {
-                            console.warn('Path parse error', e);
+                        ]);
+                    }
+                    setIsLoading(false);
+                    return;
+                }
+
+                setIsLoading(true);
+                setLoadingMessage(page === 1 ? 'Curating your feed...' : 'Loading more items...');
+                try {
+                    // Incremental K strategy
+                    const limit = page * 6;
+                    const url = `${API_URL}?query=${encodeURIComponent(searchQuery)}&k=${limit}`;
+                    console.log('Fetching:', url);
+
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('API Error');
+
+                    const data = await response.json();
+                    const items = Array.isArray(data) ? data : (data.results || []);
+
+                    const mappedItems = items.map(item => {
+                        let displayName = null;
+                        // STRATEGY 1: Extract from path
+                        if (item.image_path) {
+                            try {
+                                const parts = item.image_path.split('/');
+                                if (parts.length >= 2) {
+                                    const folderName = parts[parts.length - 2];
+                                    if (folderName && folderName.includes('_')) {
+                                        displayName = folderName.replace(/_/g, ' ');
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Path parse error', e);
+                            }
                         }
-                    }
 
-                    // STRATEGY 2: Construct from attributes if Path strategy failed
-                    if (!displayName) {
-                        const parts = [
-                            item.brand,
-                            item.color_primary,
-                            item.style,
-                            item.primary_category || item.categories
-                        ].filter(Boolean);
+                        // STRATEGY 2: Construct from attributes
+                        if (!displayName) {
+                            const parts = [
+                                item.brand,
+                                item.color_primary,
+                                item.style,
+                                item.primary_category || item.categories
+                            ].filter(Boolean);
 
-                        if (parts.length > 0) {
-                            displayName = parts.join(' ');
+                            if (parts.length > 0) {
+                                displayName = parts.join(' ');
+                            }
                         }
-                    }
 
-                    // Final Cleanup: Capitalize
-                    if (displayName) {
-                        displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
-                    }
+                        return {
+                            name: displayName ? displayName.replace(/\b\w/g, l => l.toUpperCase()) : "Fashion Item",
+                            price: item.price ? `₹${item.price.toLocaleString()}` : "₹4,500",
+                            match: item.similarity ? `${Math.round(item.similarity * 100)}%` : "N/A",
+                            img: item.image_url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400",
+                            reason: item.description || (item.style ? `${item.style} style` : "Matched via Text Search")
+                        };
+                    });
 
-                    return {
-                        name: displayName || "Fashion Item",
-                        price: item.price ? `₹${item.price.toLocaleString()}` : "₹4,500",
-                        match: item.similarity ? `${Math.round(item.similarity * 100)}%` : "N/A",
-                        // Note: item.image_path is local, so we MUST rely on item.image_url or fallback
-                        img: item.image_url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400",
-                        reason: item.description || (item.style ? `${item.style} style` : "Matched via Text Search")
-                    };
-                });
+                    setRecs(mappedItems);
+                    setHasMore(items.length >= limit);
+                } catch (error) {
+                    console.error('Fetch failed:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+            // Case 2: Image Search
+            else if (searchMode === 'image' && uploadedFile) {
+                setIsLoading(true);
+                setLoadingMessage('Synthesizing visual DNA...');
 
-                setRecs(mappedItems);
-                setHasMore(items.length >= limit);
-            } catch (error) {
-                console.error('Fetch failed:', error);
-            } finally {
-                setIsLoading(false);
+                try {
+                    const formData = new FormData();
+                    formData.append('file', uploadedFile);
+
+                    // Pagination logic: k = page * 6 (was hardcoded to 5)
+                    const limit = page * 6;
+                    const url = `/fashion/recommend/image?k=${limit}`;
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error('Vision API Error');
+
+                    const data = await response.json();
+                    const items = Array.isArray(data) ? data : (data.results || []);
+
+                    const mappedItems = items.map(item => {
+                        let displayName = null;
+                        if (item.image_path) {
+                            try {
+                                const parts = item.image_path.split('/');
+                                if (parts.length >= 2) {
+                                    const folderName = parts[parts.length - 2];
+                                    if (folderName && folderName.includes('_')) {
+                                        displayName = folderName.replace(/_/g, ' ');
+                                    }
+                                }
+                            } catch (e) { console.warn(e); }
+                        }
+
+                        if (!displayName) {
+                            displayName = [
+                                item.brand,
+                                item.color_primary,
+                                item.style,
+                                item.primary_category
+                            ].filter(Boolean).join(' ');
+                        }
+
+                        return {
+                            name: displayName ? displayName.replace(/\b\w/g, l => l.toUpperCase()) : "Visual Match",
+                            price: item.price ? `₹${item.price.toLocaleString()}` : "₹5,500",
+                            match: item.similarity ? `${Math.round(item.similarity * 100)}%` : "92%",
+                            img: item.image_url,
+                            reason: "Visually similar to your uploaded inspiration"
+                        };
+                    });
+
+                    setRecs(mappedItems);
+                    setHasMore(items.length >= limit);
+                } catch (error) {
+                    console.error('Vision search failed:', error);
+                } finally {
+                    setIsLoading(false);
+                }
             }
         };
 
-        const timer = setTimeout(fetchRecs, 500);
-        return () => clearTimeout(timer);
-    }, [searchQuery, page, userProfile, filters]);
+        // Trigger logic
+        if (searchMode === 'text') {
+            const timer = setTimeout(fetchRecs, 500);
+            return () => clearTimeout(timer);
+        } else if (searchMode === 'image' && uploadedFile) {
+            fetchRecs();
+        }
+    }, [searchQuery, page, userProfile, filters, searchMode, uploadedFile]);
 
     const handleLoadMore = () => {
         setPage(prev => prev + 1);
@@ -150,7 +225,12 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
 
     return (
         <div className="flex bg-gray-50 min-h-screen font-sans">
-            <Sidebar filters={filters} setFilters={setFilters} onReset={onReset} />
+            <Sidebar
+                filters={filters}
+                setFilters={setFilters}
+                onReset={onReset}
+                onImageUpload={handleImageUpload}
+            />
 
             <main className="flex-1 ml-80 p-12">
                 {/* Header */}
@@ -270,7 +350,13 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
                         type="text"
                         placeholder={`Search for pieces matching your DNA...`}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            if (searchMode === 'image') {
+                                setSearchMode('text');
+                                setUploadedFile(null);
+                            }
+                        }}
                         className="w-full pl-16 pr-6 py-4 rounded-full border-none shadow-sm focus:ring-2 focus:ring-black/5 bg-white text-lg"
                     />
                 </div>
@@ -310,7 +396,7 @@ export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishl
                                     {isLoading ? (
                                         <div className="col-span-full h-32 flex items-center justify-center text-gray-500">
                                             <Sparkles className="animate-spin mr-2" />
-                                            {page === 1 ? 'Curating your feed...' : 'Loading more items...'}
+                                            {loadingMessage}
                                         </div>
                                     ) : (
                                         searchQuery && hasMore && (

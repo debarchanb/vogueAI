@@ -13,6 +13,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
+      },
+      '/fashion': {
+        target: 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }
