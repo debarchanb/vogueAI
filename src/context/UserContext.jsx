@@ -19,6 +19,10 @@ export function UserProvider({ children }) {
         }
     });
 
+    const [threadId, setThreadId] = useState(() => {
+        return localStorage.getItem('vogueAI_threadId') || null;
+    });
+
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [onboarded, setOnboarded] = useState(() => {
         return !!localStorage.getItem('vogueAI_onboarded');
@@ -35,8 +39,17 @@ export function UserProvider({ children }) {
             })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.valid) setIsAuthenticated(true);
-                    else logout();
+
+                    if (data.valid) {
+                        setIsAuthenticated(true);
+                        // Sync profile if returned (handles token refreshing)
+                        if (data.profile) {
+                            console.log('Syncing user profile from server verify...');
+                            setUserProfile(prev => ({ ...prev, ...data.profile }));
+                        }
+                    } else {
+                        logout();
+                    }
                 })
                 .catch(() => logout());
         }
@@ -49,6 +62,11 @@ export function UserProvider({ children }) {
     useEffect(() => {
         localStorage.setItem('vogueAI_wishlist', JSON.stringify(wishlist));
     }, [wishlist]);
+
+    useEffect(() => {
+        if (threadId) localStorage.setItem('vogueAI_threadId', threadId);
+        else localStorage.removeItem('vogueAI_threadId');
+    }, [threadId]);
 
     useEffect(() => {
         if (onboarded) localStorage.setItem('vogueAI_onboarded', 'true');
@@ -93,11 +111,12 @@ export function UserProvider({ children }) {
         setOnboarded(false);
         setUserProfile({});
         setWishlist([]);
+        setThreadId(null);
         localStorage.clear();
     };
 
-    const completeOnboarding = (profile) => {
-        setUserProfile(profile);
+    const completeOnboarding = (profileUpdates) => {
+        setUserProfile(prev => ({ ...prev, ...profileUpdates }));
         setOnboarded(true);
     };
 
@@ -119,6 +138,8 @@ export function UserProvider({ children }) {
             wishlist,
             isAuthenticated,
             onboarded,
+            threadId,
+            setThreadId,
             login,
             logout,
             completeOnboarding,

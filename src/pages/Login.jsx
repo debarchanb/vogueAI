@@ -56,8 +56,8 @@ const StitchedBrand = () => (
 export default function Login() {
     const { login } = useUser();
     const [loading, setLoading] = useState(false);
-    const [username, setUsername] = useState('cher');
-    const [password, setPassword] = useState('password');
+    const [username, setUsername] = useState('SPV');
+    const [password, setPassword] = useState('SPV');
     const [techIndex, setTechIndex] = useState(0);
     const [runwayIndex, setRunwayIndex] = useState(0);
 

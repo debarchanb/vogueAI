@@ -18,6 +18,7 @@ export default defineConfig({
         target: 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/fashion/, ''),
       }
     }
   }

@@ -40,5 +40,19 @@
                 "Casual"
             ]
         }
+    },
+    {
+        "id": 4,
+        "username": "SPV",
+        "password": "SPV",
+        "profile": {
+            "vibe": "Futuristic",
+            "openness": "Experimental",
+            "body": "Average",
+            "base": [
+                "Techwear",
+                "Minimalist"
+            ]
+        }
     }
 ]
