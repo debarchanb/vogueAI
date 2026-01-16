@@ -122,7 +122,6 @@ export function UserProvider({ children }) {
             login,
             logout,
             completeOnboarding,
-            completeOnboarding,
             addToWishlist,
             removeFromWishlist
         }}>
