@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
-import { ShoppingBag, Search, Sparkles, TrendingUp, BarChart2, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingBag, Search, Sparkles, TrendingUp, BarChart2, LogOut, ArrowDown } from 'lucide-react';
 import Sidebar from './Sidebar';
 import FashionCard from './FashionCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
-export default function Dashboard({ userProfile, onReset, wishlistCount, onAddToWishlist }) {
-    const { logout } = useUser();
+export default function Dashboard({ wishlistCount, onAddToWishlist, onReset }) {
+    const { logout, userProfile } = useUser();
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('personal');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({
         mood: 'Mellow',
         occasion: 'Business Brunch',
@@ -14,32 +19,132 @@ export default function Dashboard({ userProfile, onReset, wishlistCount, onAddTo
         fabricWeight: 'Breathable'
     });
 
-    const [activeTab, setActiveTab] = useState('personal');
+    const [recs, setRecs] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
-    // Logic from Streamlit re-implemented here
-    const recs = [
-        {
-            name: "Silk-Blend Overcoat",
-            price: "₹12,500",
-            match: "98%",
-            img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=400",
-            reason: `Matches your '${userProfile.climate || 'local'}' climate and ${filters.palette} palette.`
-        },
-        {
-            name: "Architectural Knit",
-            price: "₹4,200",
-            match: "94%",
-            img: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=400",
-            reason: `Aligned with your ${filters.fabricWeight} weight preference for ${filters.mood} states.`
-        },
-        {
-            name: "Monolith Derby Shoes",
-            price: "₹8,900",
-            match: "89%",
-            img: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?q=80&w=400",
-            reason: `Reinforces your ${userProfile.base?.[0] || 'Selected'} aesthetic core.`
-        }
-    ];
+    const API_URL = 'https://api-fashion-ai.blacksky-cb6688f2.southindia.azurecontainerapps.io/fashion/recommend/text';
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setPage(1);
+        setRecs([]);
+        setHasMore(true);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        const fetchRecs = async () => {
+            // Only fetch if explicit search query is present
+            if (!searchQuery) {
+                // Fallback Mock Data if no search
+                if (page === 1) {
+                    setRecs([
+                        {
+                            name: "Silk-Blend Overcoat",
+                            price: "₹12,500",
+                            match: "98%",
+                            img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=400",
+                            reason: `Matches your '${userProfile.climate || 'local'}' climate and ${filters.palette} palette.`
+                        },
+                        {
+                            name: "Architectural Knit",
+                            price: "₹4,200",
+                            match: "94%",
+                            img: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=400",
+                            reason: `Aligned with your ${filters.fabricWeight} weight preference for ${filters.mood} states.`
+                        },
+                        {
+                            name: "Monolith Derby Shoes",
+                            price: "₹8,900",
+                            match: "89%",
+                            img: "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?q=80&w=400",
+                            reason: `Reinforces your ${userProfile.base?.[0] || 'Selected'} aesthetic core.`
+                        }
+                    ]);
+                }
+                setIsLoading(false);
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                // Incremental K strategy
+                const limit = page * 6;
+                const url = `${API_URL}?query=${encodeURIComponent(searchQuery)}&k=${limit}`;
+                console.log('Fetching:', url);
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('API Error');
+
+                const data = await response.json();
+                const items = Array.isArray(data) ? data : (data.results || []);
+
+                const mappedItems = items.map(item => {
+                    let displayName = null;
+
+                    // STRATEGY 1: Extract from path (e.g. ".../Mosaic_Print_Pocket_Tee/img_0033.jpg")
+                    // The folder name 'Mosaic_Print_Pocket_Tee' is usually the best product name.
+                    if (item.image_path) {
+                        try {
+                            const parts = item.image_path.split('/');
+                            if (parts.length >= 2) {
+                                // Get the folder name (second to last item)
+                                const folderName = parts[parts.length - 2];
+                                // Check if it looks like a name (has underscores, not just "img")
+                                if (folderName && folderName.includes('_')) {
+                                    displayName = folderName.replace(/_/g, ' ');
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Path parse error', e);
+                        }
+                    }
+
+                    // STRATEGY 2: Construct from attributes if Path strategy failed
+                    if (!displayName) {
+                        const parts = [
+                            item.brand,
+                            item.color_primary,
+                            item.style,
+                            item.primary_category || item.categories
+                        ].filter(Boolean);
+
+                        if (parts.length > 0) {
+                            displayName = parts.join(' ');
+                        }
+                    }
+
+                    // Final Cleanup: Capitalize
+                    if (displayName) {
+                        displayName = displayName.replace(/\b\w/g, l => l.toUpperCase());
+                    }
+
+                    return {
+                        name: displayName || "Fashion Item",
+                        price: item.price ? `₹${item.price.toLocaleString()}` : "₹4,500",
+                        match: item.similarity ? `${Math.round(item.similarity * 100)}%` : "N/A",
+                        // Note: item.image_path is local, so we MUST rely on item.image_url or fallback
+                        img: item.image_url || "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400",
+                        reason: item.description || (item.style ? `${item.style} style` : "Matched via Text Search")
+                    };
+                });
+
+                setRecs(mappedItems);
+                setHasMore(items.length >= limit);
+            } catch (error) {
+                console.error('Fetch failed:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        const timer = setTimeout(fetchRecs, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery, page, userProfile, filters]);
+
+    const handleLoadMore = () => {
+        setPage(prev => prev + 1);
+    };
 
     return (
         <div className="flex bg-gray-50 min-h-screen font-sans">
@@ -52,14 +157,29 @@ export default function Dashboard({ userProfile, onReset, wishlistCount, onAddTo
                         <h1 className="text-4xl font-serif text-gray-900 mb-2">Refining for {filters.occasion}</h1>
                         <p className="text-gray-500">Curating for {userProfile.vibe} Vibe • {userProfile.body} Architecture</p>
                     </div>
-                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-                        <ShoppingBag size={18} />
-                        <span className="font-semibold text-sm">Wardrobe ({wishlistCount})</span>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/about')}
+                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                            <span>System Architecture</span>
+                        </button>
+                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+                            <ShoppingBag size={18} />
+                            <span className="font-semibold text-sm">Wardrobe ({wishlistCount})</span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                logout();
+                                window.location.href = '/login';
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+                        >
+                            <LogOut size={16} />
+                            <span>Logout</span>
+                        </button>
                     </div>
-                    <button onClick={logout} className="ml-4 flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 text-red-500">
-                        <LogOut size={18} />
-                        <span className="font-semibold text-sm">Logout</span>
-                    </button>
                 </header>
 
                 {/* Search */}
@@ -67,7 +187,9 @@ export default function Dashboard({ userProfile, onReset, wishlistCount, onAddTo
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                         type="text"
-                        placeholder={`Search for ${filters.occasion.toLowerCase()} pieces matching your DNA...`}
+                        placeholder={`Search for pieces matching your DNA...`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-16 pr-6 py-4 rounded-full border-none shadow-sm focus:ring-2 focus:ring-black/5 bg-white text-lg"
                     />
                 </div>
@@ -96,10 +218,31 @@ export default function Dashboard({ userProfile, onReset, wishlistCount, onAddTo
                                     <Sparkles size={16} />
                                     <span>Suggestions optimized for <b>{userProfile.body}</b> architecture and <b>{filters.palette}</b> logic.</span>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {recs.map((item, idx) => (
-                                        <FashionCard key={idx} item={item} onSave={onAddToWishlist} />
-                                    ))}
+                                <div className="space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        {recs.map((item, idx) => (
+                                            <FashionCard key={`${item.name}-${idx}`} item={item} onSave={onAddToWishlist} />
+                                        ))}
+                                    </div>
+
+                                    {/* Load More / Loading State */}
+                                    {isLoading ? (
+                                        <div className="col-span-full h-32 flex items-center justify-center text-gray-500">
+                                            <Sparkles className="animate-spin mr-2" />
+                                            {page === 1 ? 'Curating your feed...' : 'Loading more items...'}
+                                        </div>
+                                    ) : (
+                                        searchQuery && hasMore && (
+                                            <div className="flex justify-center pt-4">
+                                                <button
+                                                    onClick={handleLoadMore}
+                                                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full text-sm font-medium hover:bg-gray-50 transition-all shadow-sm"
+                                                >
+                                                    View More Results <ArrowDown size={16} />
+                                                </button>
+                                            </div>
+                                        )
+                                    )}
                                 </div>
                             </div>
                         )}

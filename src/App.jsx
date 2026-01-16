@@ -4,6 +4,7 @@ import { UserProvider, useUser } from './context/UserContext';
 import Login from './pages/Login';
 import OnboardingPage from './pages/OnboardingPage';
 import DashboardPage from './pages/DashboardPage';
+import AboutPage from './pages/AboutPage'; // Added import for AboutPage
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useUser();
@@ -31,6 +32,12 @@ function AppContent() {
       <Route path="/onboarding" element={
         <ProtectedRoute>
           {onboarded ? <Navigate to="/dashboard" replace /> : <OnboardingPage />}
+        </ProtectedRoute>
+      } />
+
+      <Route path="/about" element={
+        <ProtectedRoute>
+          <AboutPage />
         </ProtectedRoute>
       } />
 
