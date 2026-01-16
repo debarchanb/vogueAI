@@ -3,13 +3,14 @@ import Dashboard from '../components/Dashboard';
 import { useUser } from '../context/UserContext';
 
 export default function DashboardPage() {
-    const { userProfile, wishlist, addToWishlist, logout } = useUser();
+    const { userProfile, wishlist, addToWishlist, removeFromWishlist, logout } = useUser();
 
     return (
         <Dashboard
             userProfile={userProfile}
-            wishlistCount={wishlist}
+            wishlist={wishlist}
             onAddToWishlist={addToWishlist}
+            onRemoveFromWishlist={removeFromWishlist}
             onReset={logout}
         />
     );

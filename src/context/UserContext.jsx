@@ -10,7 +10,13 @@ export function UserProvider({ children }) {
 
     const [wishlist, setWishlist] = useState(() => {
         const saved = localStorage.getItem('vogueAI_wishlist');
-        return saved ? parseInt(saved, 10) : 0;
+        try {
+            const parsed = saved ? JSON.parse(saved) : [];
+            // Migration: If legacy data (number) exists, reset to empty array
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
     });
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -41,7 +47,7 @@ export function UserProvider({ children }) {
     }, [userProfile]);
 
     useEffect(() => {
-        localStorage.setItem('vogueAI_wishlist', wishlist.toString());
+        localStorage.setItem('vogueAI_wishlist', JSON.stringify(wishlist));
     }, [wishlist]);
 
     useEffect(() => {
@@ -86,7 +92,7 @@ export function UserProvider({ children }) {
         setIsAuthenticated(false);
         setOnboarded(false);
         setUserProfile({});
-        setWishlist(0);
+        setWishlist([]);
         localStorage.clear();
     };
 
@@ -95,7 +101,17 @@ export function UserProvider({ children }) {
         setOnboarded(true);
     };
 
-    const addToWishlist = () => setWishlist(prev => prev + 1);
+    const addToWishlist = (item) => {
+        setWishlist(prev => {
+            // Avoid duplicates
+            if (prev.some(i => i.name === item.name)) return prev;
+            return [...prev, item];
+        });
+    };
+
+    const removeFromWishlist = (itemName) => {
+        setWishlist(prev => prev.filter(i => i.name !== itemName));
+    };
 
     return (
         <UserContext.Provider value={{
@@ -106,7 +122,9 @@ export function UserProvider({ children }) {
             login,
             logout,
             completeOnboarding,
-            addToWishlist
+            completeOnboarding,
+            addToWishlist,
+            removeFromWishlist
         }}>
             {children}
         </UserContext.Provider>

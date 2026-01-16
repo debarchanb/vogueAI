@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Search, Sparkles, TrendingUp, BarChart2, LogOut, ArrowDown } from 'lucide-react';
+import { ShoppingBag, Search, Sparkles, TrendingUp, BarChart2, LogOut, ArrowDown, Settings, Trash2 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import FashionCard from './FashionCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
-export default function Dashboard({ wishlistCount, onAddToWishlist, onReset }) {
+export default function Dashboard({ wishlist, onAddToWishlist, onRemoveFromWishlist, onReset }) {
     const { logout, userProfile } = useUser();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('personal');
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [showWardrobe, setShowWardrobe] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({
@@ -158,17 +160,96 @@ export default function Dashboard({ wishlistCount, onAddToWishlist, onReset }) {
                         <p className="text-gray-500">Curating for {userProfile.vibe} Vibe • {userProfile.body} Architecture</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate('/about')}
-                            className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
-                            <span>System Architecture</span>
-                        </button>
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-                            <ShoppingBag size={18} />
-                            <span className="font-semibold text-sm">Wardrobe ({wishlistCount})</span>
+                        {/* Dropdown Menu */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setMenuOpen(!menuOpen)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                <Settings size={16} />
+                                <span>Options</span>
+                            </button>
+
+                            {menuOpen && (
+                                <div className="absolute top-12 right-0 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                                    <button
+                                        onClick={() => {
+                                            navigate('/onboarding');
+                                            setMenuOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 flex items-center gap-2"
+                                    >
+                                        <span>Back to Onboarding</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigate('/about');
+                                            setMenuOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                    >
+                                        <span>System Architecture</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
+                        {/* Wardrobe Button & Floating Window */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowWardrobe(!showWardrobe)}
+                                className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors"
+                            >
+                                <ShoppingBag size={18} />
+                                <span className="font-semibold text-sm">Wardrobe ({wishlist.length})</span>
+                            </button>
+
+                            {/* Floating Wardrobe List */}
+                            {showWardrobe && (
+                                <div className="absolute top-12 right-0 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                        <h3 className="font-serif font-medium text-gray-900">Your Wardrobe</h3>
+                                        <span className="text-xs text-gray-500">{wishlist.length} item{wishlist.length !== 1 && 's'}</span>
+                                    </div>
+
+                                    <div className="max-h-96 overflow-y-auto p-2 space-y-2">
+                                        {wishlist.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-400 text-sm">
+                                                Your wardrobe is empty.
+                                            </div>
+                                        ) : (
+                                            wishlist.map((item, idx) => (
+                                                <div key={idx} className="flex gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors group relative">
+                                                    <img src={item.img} alt={item.name} className="w-12 h-16 object-cover rounded-md" />
+                                                    <div className="flex-1 min-w-0 pr-6">
+                                                        <h4 className="text-sm font-medium text-gray-900 truncate">{item.name}</h4>
+                                                        <p className="text-xs text-gray-500">{item.price}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onRemoveFromWishlist(item.name);
+                                                        }}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Remove item"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {wishlist.length > 0 && (
+                                        <div className="p-3 border-t border-gray-100 bg-gray-50">
+                                            <button className="w-full py-2 bg-black text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors">
+                                                Checkout
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                         <button
                             onClick={() => {
                                 logout();

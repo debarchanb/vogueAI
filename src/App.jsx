@@ -31,7 +31,7 @@ function AppContent() {
 
       <Route path="/onboarding" element={
         <ProtectedRoute>
-          {onboarded ? <Navigate to="/dashboard" replace /> : <OnboardingPage />}
+          <OnboardingPage />
         </ProtectedRoute>
       } />
 

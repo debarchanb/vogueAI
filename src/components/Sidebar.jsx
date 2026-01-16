@@ -10,7 +10,7 @@ export default function Sidebar({ filters, setFilters, onReset }) {
         <div className="w-80 bg-white h-screen fixed left-0 top-0 border-r border-gray-100 p-6 flex flex-col overflow-y-auto z-20">
             <div className="mb-8">
                 <h2 className="text-2xl font-serif font-bold">VogueAI</h2>
-                <p className="text-xs text-gray-400 mt-1">v2.5 Hybrid-Engine Active</p>
+
             </div>
 
             <div className="space-y-8 flex-1">
